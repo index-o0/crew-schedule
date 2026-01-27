@@ -195,7 +195,7 @@ export default function ResultPage() {
               onClick={() => router.push('/')}
               className="w-full py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-medium transition"
             >
-              새 일정 만들기
+              메인으로 (내 일정 관리)
             </button>
           </div>
         </div>

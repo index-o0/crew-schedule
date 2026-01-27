@@ -300,6 +300,16 @@ export default function VotePage() {
             </button>
           </div>
         </div>
+
+        {/* 메인으로 버튼 */}
+        <div className="mt-4 text-center">
+          <button
+            onClick={() => router.push('/')}
+            className="text-sm text-gray-600 hover:text-gray-800 underline"
+          >
+            메인으로 이동 (내 일정 관리)
+          </button>
+        </div>
       </div>
     </div>
   );

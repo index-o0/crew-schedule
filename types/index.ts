@@ -23,6 +23,7 @@ export interface Schedule {
   members: Member[];
   votes: Vote[];
   createdAt: string;
+  createdBy?: string; // 생성자 이메일
 }
 
 export interface ScheduleFormData {

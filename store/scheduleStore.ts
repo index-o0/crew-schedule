@@ -5,6 +5,7 @@ interface ScheduleStore {
   schedules: Record<string, Schedule>;
   addSchedule: (schedule: Schedule) => void;
   getSchedule: (id: string) => Schedule | undefined;
+  getMySchedules: (email: string) => Schedule[];
   addVote: (scheduleId: string, vote: Vote) => void;
   updateVote: (scheduleId: string, memberId: string, vote: Vote) => void;
   hasVoted: (scheduleId: string, memberId: string) => boolean;
@@ -30,6 +31,13 @@ export const useScheduleStore = create<ScheduleStore>((set, get) => ({
 
   getSchedule: (id) => {
     return get().schedules[id];
+  },
+
+  getMySchedules: (email) => {
+    const schedules = get().schedules;
+    return Object.values(schedules)
+      .filter((s) => s.createdBy === email)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   },
 
   addVote: (scheduleId, vote) => {

@@ -3,9 +3,9 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
-import { useScheduleStore } from '@/store/scheduleStore';
-import { Vote } from '@/types';
+import { Schedule, Vote } from '@/types';
 import { formatDateKorean, generateId } from '@/lib/utils';
+import * as api from '@/lib/scheduleApi';
 import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton';
 
 export default function VotePage() {
@@ -14,38 +14,42 @@ export default function VotePage() {
   const scheduleId = params.id as string;
   const { data: session, status } = useSession();
 
-  const { getSchedule, addVote, updateVote, getVoteByEmail, initializeFromLocalStorage } =
-    useScheduleStore();
-
-  const [schedule, setSchedule] = useState<ReturnType<typeof getSchedule>>();
+  const [schedule, setSchedule] = useState<Schedule | null>(null);
   const [selectedTimeSlots, setSelectedTimeSlots] = useState<string[]>([]);
   const [isEditMode, setIsEditMode] = useState(false);
-  const [isStoreLoaded, setIsStoreLoaded] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [scheduleNotFound, setScheduleNotFound] = useState(false);
 
-  // 스토어 초기화
+  // 일정 및 기존 투표 불러오기
   useEffect(() => {
-    initializeFromLocalStorage();
-    setIsStoreLoaded(true);
-  }, [initializeFromLocalStorage]);
+    async function loadSchedule() {
+      const data = await api.getSchedule(scheduleId);
 
-  // 로그인 후 일정 확인
-  useEffect(() => {
-    if (isStoreLoaded && session) {
-      const currentSchedule = getSchedule(scheduleId);
-      if (currentSchedule) {
-        setSchedule(currentSchedule);
-        // 기존 투표 확인
-        const existingVote = getVoteByEmail(scheduleId, session.user?.email || '');
+      if (!data) {
+        setScheduleNotFound(true);
+        setIsLoading(false);
+        return;
+      }
+
+      setSchedule(data);
+
+      // 로그인된 경우 기존 투표 확인
+      if (session?.user?.email) {
+        const existingVote = await api.getVoteByEmail(scheduleId, session.user.email);
         if (existingVote) {
           setSelectedTimeSlots(existingVote.timeSlotIds);
           setIsEditMode(true);
         }
-      } else {
-        setScheduleNotFound(true);
       }
+
+      setIsLoading(false);
     }
-  }, [isStoreLoaded, session, scheduleId, getSchedule, getVoteByEmail]);
+
+    if (status !== 'loading') {
+      loadSchedule();
+    }
+  }, [scheduleId, session, status]);
 
   const toggleTimeSlot = (slotId: string) => {
     setSelectedTimeSlots((prev) =>
@@ -55,7 +59,7 @@ export default function VotePage() {
     );
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!schedule || !session?.user?.email || !session?.user?.name) {
       alert('로그인이 필요합니다.');
       return;
@@ -66,6 +70,8 @@ export default function VotePage() {
       return;
     }
 
+    setIsSubmitting(true);
+
     const vote: Vote = {
       voterId: generateId(),
       voterName: session.user.name,
@@ -74,19 +80,26 @@ export default function VotePage() {
       votedAt: new Date().toISOString(),
     };
 
+    let success: boolean;
     if (isEditMode) {
-      updateVote(scheduleId, session.user.email, vote);
-      alert('투표가 수정되었습니다!');
+      success = await api.updateVote(scheduleId, session.user.email, vote);
+      if (success) alert('투표가 수정되었습니다!');
     } else {
-      addVote(scheduleId, vote);
-      alert('투표가 완료되었습니다!');
+      success = await api.addVote(scheduleId, vote);
+      if (success) alert('투표가 완료되었습니다!');
     }
 
-    router.push(`/result/${scheduleId}`);
+    setIsSubmitting(false);
+
+    if (success) {
+      router.push(`/result/${scheduleId}`);
+    } else {
+      alert('투표에 실패했습니다. 다시 시도해주세요.');
+    }
   };
 
-  // 로딩 중 (세션 확인 중)
-  if (status === 'loading' || !isStoreLoaded) {
+  // 로딩 중
+  if (status === 'loading' || isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <div className="text-center">
@@ -97,11 +110,10 @@ export default function VotePage() {
     );
   }
 
-  // 로그인 안 됨 - 먼저 로그인 요청
+  // 로그인 안 됨
   if (!session) {
     return (
       <div className="min-h-screen bg-slate-50">
-        {/* 헤더 */}
         <div className="header-gradient pt-12 pb-16 px-4">
           <div className="max-w-md mx-auto text-center">
             <div className="text-4xl mb-3">📅</div>
@@ -110,7 +122,6 @@ export default function VotePage() {
           </div>
         </div>
 
-        {/* 로그인 카드 */}
         <div className="px-4 -mt-8">
           <div className="max-w-md mx-auto card p-6 text-center fade-in">
             <h2 className="text-lg font-semibold text-slate-800 mb-2">
@@ -125,7 +136,6 @@ export default function VotePage() {
           </div>
         </div>
 
-        {/* 푸터 */}
         <div className="mt-8 text-center">
           <p className="text-xs text-slate-300">© 수현쨩</p>
         </div>
@@ -133,7 +143,7 @@ export default function VotePage() {
     );
   }
 
-  // 로그인 됨 + 일정 없음
+  // 일정 없음
   if (scheduleNotFound) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
@@ -156,22 +166,13 @@ export default function VotePage() {
     );
   }
 
-  // 로그인 됨 + 일정 로딩 중
   if (!schedule) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="text-center">
-          <div className="inline-block w-8 h-8 border-3 border-indigo-200 border-t-indigo-500 rounded-full animate-spin mb-3"></div>
-          <div className="text-sm text-slate-500">일정 불러오는 중...</div>
-        </div>
-      </div>
-    );
+    return null;
   }
 
-  // 로그인 됨 + 일정 있음 - 투표 화면
+  // 투표 화면
   return (
     <div className="min-h-screen bg-slate-50 pb-8">
-      {/* 헤더 */}
       <div className="header-gradient pt-8 pb-12 px-4">
         <div className="max-w-lg mx-auto text-center">
           <p className="text-xs text-indigo-200 mb-1">일정 투표</p>
@@ -183,9 +184,7 @@ export default function VotePage() {
       <div className="px-4 -mt-6">
         <div className="max-w-lg mx-auto space-y-4">
 
-          {/* 투표 카드 */}
           <div className="card p-5 fade-in">
-            {/* 사용자 정보 */}
             <div className="mb-5">
               <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
                 <div className="flex items-center gap-3">
@@ -211,7 +210,6 @@ export default function VotePage() {
               </div>
             </div>
 
-            {/* 시간 선택 */}
             <div className="mb-5">
               <label className="block text-sm font-medium text-slate-700 mb-3">
                 가능한 시간 선택 <span className="font-normal text-slate-400">(복수 선택)</span>
@@ -239,17 +237,15 @@ export default function VotePage() {
               </div>
             </div>
 
-            {/* 제출 버튼 */}
             <button
               onClick={handleSubmit}
-              disabled={selectedTimeSlots.length === 0}
-              className="w-full py-4 btn-primary rounded-xl font-semibold text-lg"
+              disabled={selectedTimeSlots.length === 0 || isSubmitting}
+              className="w-full py-4 btn-primary rounded-xl font-semibold text-lg disabled:opacity-50"
             >
-              {isEditMode ? '투표 수정하기' : '투표하기'}
+              {isSubmitting ? '처리 중...' : isEditMode ? '투표 수정하기' : '투표하기'}
             </button>
           </div>
 
-          {/* 결과 보기 */}
           <button
             onClick={() => router.push(`/result/${scheduleId}`)}
             className="w-full py-3 btn-secondary rounded-xl font-medium text-sm"
@@ -257,7 +253,6 @@ export default function VotePage() {
             현재 결과 보기 →
           </button>
 
-          {/* 링크 공유 */}
           <div className="card p-4 fade-in">
             <p className="text-sm font-medium text-slate-700 mb-2">링크 공유</p>
             <div className="flex gap-2">
@@ -279,7 +274,6 @@ export default function VotePage() {
             </div>
           </div>
 
-          {/* 메인으로 */}
           <div className="text-center">
             <button
               onClick={() => router.push('/')}
@@ -289,7 +283,6 @@ export default function VotePage() {
             </button>
           </div>
 
-          {/* 푸터 */}
           <div className="text-center pt-4">
             <p className="text-xs text-slate-300">© 수현쨩</p>
           </div>

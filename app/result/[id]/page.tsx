@@ -2,36 +2,37 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useScheduleStore } from '@/store/scheduleStore';
+import { Schedule } from '@/types';
 import { formatDateKorean } from '@/lib/utils';
+import * as api from '@/lib/scheduleApi';
 
 export default function ResultPage() {
   const params = useParams();
   const router = useRouter();
   const scheduleId = params.id as string;
 
-  const { getSchedule, initializeFromLocalStorage } = useScheduleStore();
-  const [schedule, setSchedule] = useState<ReturnType<typeof getSchedule>>();
+  const [schedule, setSchedule] = useState<Schedule | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [scheduleNotFound, setScheduleNotFound] = useState(false);
 
   useEffect(() => {
-    initializeFromLocalStorage();
-    setIsLoading(false);
-  }, [initializeFromLocalStorage]);
+    async function loadSchedule() {
+      const data = await api.getSchedule(scheduleId);
 
-  useEffect(() => {
-    if (!isLoading) {
-      const currentSchedule = getSchedule(scheduleId);
-      setSchedule(currentSchedule);
-
-      if (!currentSchedule) {
-        alert('일정을 찾을 수 없습니다.');
-        router.push('/');
+      if (!data) {
+        setScheduleNotFound(true);
+        setIsLoading(false);
+        return;
       }
-    }
-  }, [scheduleId, isLoading, getSchedule, router]);
 
-  if (isLoading || !schedule) {
+      setSchedule(data);
+      setIsLoading(false);
+    }
+
+    loadSchedule();
+  }, [scheduleId]);
+
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <div className="text-center">
@@ -40,6 +41,32 @@ export default function ResultPage() {
         </div>
       </div>
     );
+  }
+
+  if (scheduleNotFound) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
+        <div className="max-w-md mx-auto card p-6 text-center">
+          <div className="text-4xl mb-3">😢</div>
+          <h2 className="text-lg font-semibold text-slate-800 mb-2">
+            일정을 찾을 수 없습니다
+          </h2>
+          <p className="text-sm text-slate-500 mb-6">
+            삭제되었거나 잘못된 링크입니다
+          </p>
+          <button
+            onClick={() => router.push('/')}
+            className="px-6 py-3 btn-primary rounded-xl font-medium"
+          >
+            메인으로 이동
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!schedule) {
+    return null;
   }
 
   // 시간대별 투표 수 계산

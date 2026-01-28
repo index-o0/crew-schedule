@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { TimeSlot, Schedule } from '@/types';
 import { generateId, formatDate, formatDateKorean } from '@/lib/utils';
-import { useScheduleStore } from '@/store/scheduleStore';
+import * as api from '@/lib/scheduleApi';
 import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton';
 import { UserProfile } from '@/components/auth/UserProfile';
 
@@ -16,11 +16,11 @@ const MINUTES = ['00', '30'];
 export default function Home() {
   const router = useRouter();
   const { data: session, status } = useSession();
-  const { addSchedule, getMySchedules, deleteSchedule, initializeFromLocalStorage } = useScheduleStore();
 
   const [mySchedules, setMySchedules] = useState<Schedule[]>([]);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isCreating, setIsCreating] = useState(false);
 
   // 일정 생성 폼 상태
   const [title, setTitle] = useState('걸뱅이크루 모임');
@@ -32,17 +32,20 @@ export default function Home() {
   const [selectedHour, setSelectedHour] = useState<number>(2);
   const [selectedMinute, setSelectedMinute] = useState<string>('00');
 
+  // 내 일정 불러오기
   useEffect(() => {
-    initializeFromLocalStorage();
-    setIsLoading(false);
-  }, [initializeFromLocalStorage]);
-
-  useEffect(() => {
-    if (!isLoading && session?.user?.email) {
-      const schedules = getMySchedules(session.user.email);
-      setMySchedules(schedules);
+    async function loadSchedules() {
+      if (session?.user?.email) {
+        const schedules = await api.getMySchedules(session.user.email);
+        setMySchedules(schedules);
+      }
+      setIsLoading(false);
     }
-  }, [isLoading, session, getMySchedules]);
+
+    if (status !== 'loading') {
+      loadSchedules();
+    }
+  }, [session, status]);
 
   const formatTimeLabel = (period: 'AM' | 'PM', hour: number, minute: string) => {
     const periodKo = period === 'AM' ? '오전' : '오후';
@@ -52,7 +55,6 @@ export default function Home() {
   const addTimeSlot = () => {
     const label = formatTimeLabel(selectedPeriod, selectedHour, selectedMinute);
 
-    // 중복 체크
     if (timeSlots.some(slot => slot.label === label)) {
       alert('이미 추가된 시간입니다.');
       return;
@@ -65,21 +67,23 @@ export default function Home() {
     setTimeSlots(timeSlots.filter((slot) => slot.id !== id));
   };
 
-  const handleDeleteSchedule = (scheduleId: string, e: React.MouseEvent) => {
+  const handleDeleteSchedule = async (scheduleId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (confirm('정말 이 일정을 삭제하시겠습니까?\n삭제하면 공유 링크도 사라집니다.')) {
-      deleteSchedule(scheduleId);
-      if (session?.user?.email) {
-        setMySchedules(getMySchedules(session.user.email));
+      const success = await api.deleteSchedule(scheduleId);
+      if (success && session?.user?.email) {
+        setMySchedules(await api.getMySchedules(session.user.email));
       }
     }
   };
 
-  const createSchedule = () => {
+  const createSchedule = async () => {
     if (timeSlots.length === 0) {
       alert('시간대를 최소 1개 이상 추가해주세요.');
       return;
     }
+
+    setIsCreating(true);
 
     const schedule: Schedule = {
       id: generateId(),
@@ -91,8 +95,14 @@ export default function Home() {
       createdBy: session?.user?.email || undefined,
     };
 
-    addSchedule(schedule);
-    router.push(`/vote/${schedule.id}`);
+    const created = await api.createSchedule(schedule);
+    setIsCreating(false);
+
+    if (created) {
+      router.push(`/vote/${created.id}`);
+    } else {
+      alert('일정 생성에 실패했습니다.');
+    }
   };
 
   // 로딩 중
@@ -111,7 +121,6 @@ export default function Home() {
   if (!session) {
     return (
       <div className="min-h-screen bg-slate-50">
-        {/* 헤더 */}
         <div className="header-gradient pt-12 pb-16 px-4">
           <div className="max-w-md mx-auto text-center">
             <div className="text-4xl mb-3">📅</div>
@@ -120,7 +129,6 @@ export default function Home() {
           </div>
         </div>
 
-        {/* 로그인 카드 */}
         <div className="px-4 -mt-8">
           <div className="max-w-md mx-auto card p-6 text-center fade-in">
             <h2 className="text-lg font-semibold text-slate-800 mb-2">
@@ -141,7 +149,6 @@ export default function Home() {
           </div>
         </div>
 
-        {/* 푸터 */}
         <div className="mt-8 text-center">
           <div className="flex justify-center gap-4 text-xs text-slate-400 mb-2">
             <a href="/privacy" className="hover:text-slate-600 transition">개인정보처리방침</a>
@@ -157,7 +164,6 @@ export default function Home() {
   // 로그인 됨 - 대시보드
   return (
     <div className="min-h-screen bg-slate-50 pb-8">
-      {/* 헤더 */}
       <div className="header-gradient pt-8 pb-12 px-4">
         <div className="max-w-lg mx-auto">
           <div className="flex items-center justify-between">
@@ -173,7 +179,6 @@ export default function Home() {
       <div className="px-4 -mt-6">
         <div className="max-w-lg mx-auto space-y-4">
 
-          {/* 내 일정 목록 */}
           {!showCreateForm && (
             <div className="card p-5 fade-in">
               <div className="flex items-center justify-between mb-4">
@@ -236,7 +241,6 @@ export default function Home() {
             </div>
           )}
 
-          {/* 일정 생성 폼 */}
           {showCreateForm && (
             <div className="card p-5 fade-in">
               <div className="flex items-center justify-between mb-5">
@@ -249,7 +253,6 @@ export default function Home() {
                 </button>
               </div>
 
-              {/* 제목 */}
               <div className="mb-5">
                 <label className="block text-sm font-medium text-slate-700 mb-2">
                   모임 제목
@@ -263,7 +266,6 @@ export default function Home() {
                 />
               </div>
 
-              {/* 날짜 */}
               <div className="mb-5">
                 <label className="block text-sm font-medium text-slate-700 mb-2">
                   날짜
@@ -276,15 +278,12 @@ export default function Home() {
                 />
               </div>
 
-              {/* 시간대 선택 */}
               <div className="mb-5">
                 <label className="block text-sm font-medium text-slate-700 mb-3">
                   시간대 추가
                 </label>
 
-                {/* 시간 선택기 */}
                 <div className="bg-slate-50 rounded-xl p-4 mb-3">
-                  {/* AM/PM 선택 */}
                   <div className="flex gap-2 mb-4">
                     <button
                       onClick={() => setSelectedPeriod('AM')}
@@ -304,9 +303,7 @@ export default function Home() {
                     </button>
                   </div>
 
-                  {/* 시간 스크롤러 */}
                   <div className="flex gap-3 items-center justify-center">
-                    {/* 시 선택 */}
                     <div className="flex-1">
                       <p className="text-xs text-slate-500 text-center mb-2">시</p>
                       <div className="grid grid-cols-4 gap-1.5">
@@ -327,7 +324,6 @@ export default function Home() {
                     </div>
                   </div>
 
-                  {/* 분 선택 */}
                   <div className="mt-4">
                     <p className="text-xs text-slate-500 text-center mb-2">분</p>
                     <div className="flex gap-2 justify-center">
@@ -348,7 +344,6 @@ export default function Home() {
                   </div>
                 </div>
 
-                {/* 선택된 시간 미리보기 & 추가 버튼 */}
                 <div className="flex items-center gap-2">
                   <div className="flex-1 px-4 py-3 bg-indigo-50 rounded-xl text-indigo-700 font-semibold text-center">
                     {formatTimeLabel(selectedPeriod, selectedHour, selectedMinute)}
@@ -361,7 +356,6 @@ export default function Home() {
                   </button>
                 </div>
 
-                {/* 추가된 시간대 목록 */}
                 {timeSlots.length > 0 && (
                   <div className="mt-4 space-y-2">
                     <p className="text-xs text-slate-500 mb-2">추가된 시간대 ({timeSlots.length}개)</p>
@@ -383,20 +377,18 @@ export default function Home() {
                 )}
               </div>
 
-              {/* 생성 버튼 */}
               <button
                 onClick={createSchedule}
-                disabled={timeSlots.length === 0}
-                className="w-full py-4 btn-primary rounded-xl font-semibold text-lg"
+                disabled={timeSlots.length === 0 || isCreating}
+                className="w-full py-4 btn-primary rounded-xl font-semibold text-lg disabled:opacity-50"
               >
-                일정 만들기
+                {isCreating ? '생성 중...' : '일정 만들기'}
               </button>
             </div>
           )}
         </div>
       </div>
 
-      {/* 푸터 */}
       <div className="mt-8 text-center pb-4">
         <div className="flex justify-center gap-4 text-xs text-slate-400 mb-2">
           <a href="/privacy" className="hover:text-slate-600 transition">개인정보처리방침</a>

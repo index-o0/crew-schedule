@@ -3,10 +3,10 @@ import type { Metadata } from 'next';
 export const metadata: Metadata = {
   metadataBase: new URL('https://crew-schedule-six.vercel.app'),
   title: '일정 투표 - 걸뱅이크루',
-  description: '걸뱅이크루 모임 일정에 투표해주세요',
+  description: '걸뱅이크루 모임 일정에 투표해 주세요',
   openGraph: {
     title: '걸뱅이크루 일정 투표',
-    description: '모임 일정에 투표해주세요!',
+    description: '모임 일정에 투표해 주세요!',
     type: 'website',
     locale: 'ko_KR',
     url: 'https://crew-schedule-six.vercel.app',
@@ -22,7 +22,7 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: '걸뱅이크루 일정 투표',
-    description: '모임 일정에 투표해주세요!',
+    description: '모임 일정에 투표해 주세요!',
     images: ['https://crew-schedule-six.vercel.app/OGimage.png'],
   },
 };

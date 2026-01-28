@@ -33,8 +33,11 @@ export default function ResultPage() {
 
   if (isLoading || !schedule) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-lg text-gray-600">로딩 중...</div>
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="text-center">
+          <div className="inline-block w-8 h-8 border-3 border-indigo-200 border-t-indigo-500 rounded-full animate-spin mb-3"></div>
+          <div className="text-sm text-slate-500">로딩 중...</div>
+        </div>
       </div>
     );
   }
@@ -51,181 +54,164 @@ export default function ResultPage() {
     };
   });
 
-  // 가장 많은 투표를 받은 시간대
   const maxVotes = Math.max(...timeSlotVotes.map((tv) => tv.count), 0);
+  const totalVoters = schedule.votes.length;
 
   return (
-    <div className="min-h-screen py-8 px-4">
-      <div className="max-w-2xl mx-auto">
-        {/* 헤더 */}
-        <div className="text-center mb-6">
-          <h1 className="text-2xl font-bold text-gray-900 mb-1">
-            {schedule.title}
-          </h1>
-          <p className="text-lg text-gray-600">
-            {formatDateKorean(schedule.date)}
-          </p>
-          <p className="text-sm text-gray-500 mt-2">
-            총 {schedule.votes.length}명 참여
-          </p>
+    <div className="min-h-screen bg-slate-50 pb-8">
+      {/* 헤더 */}
+      <div className="header-gradient pt-8 pb-12 px-4">
+        <div className="max-w-lg mx-auto text-center">
+          <p className="text-xs text-indigo-200 mb-1">투표 결과</p>
+          <h1 className="text-xl font-bold text-white mb-1">{schedule.title}</h1>
+          <p className="text-indigo-100">{formatDateKorean(schedule.date)}</p>
+
+          {/* 참여 현황 */}
+          <div className="mt-4 inline-flex items-center gap-3 bg-white/10 backdrop-blur-sm rounded-full px-5 py-2">
+            <span className="text-white font-semibold">{totalVoters}명</span>
+            <span className="text-indigo-200">참여</span>
+          </div>
         </div>
+      </div>
 
-        {/* 결과 카드 */}
-        <div className="bg-white rounded-2xl shadow-lg p-6 space-y-6">
+      <div className="px-4 -mt-6">
+        <div className="max-w-lg mx-auto space-y-4">
+
           {/* 시간대별 결과 */}
-          <div>
-            <h2 className="text-lg font-bold text-gray-900 mb-4">
-              시간대별 참여 현황
-            </h2>
-            <div className="space-y-3">
-              {timeSlotVotes.map(({ slot, votes, count }) => {
-                const percentage = schedule.votes.length > 0
-                  ? (count / schedule.votes.length) * 100
-                  : 0;
-                const isTopChoice = count === maxVotes && count > 0;
+          <div className="card p-5 fade-in">
+            <h2 className="font-semibold text-slate-800 mb-4">시간대별 현황</h2>
 
-                return (
-                  <div key={slot.id} className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold text-gray-800">
-                          {slot.label}
-                        </span>
-                        {isTopChoice && count > 0 && (
-                          <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full font-medium">
-                            최다 선택
-                          </span>
-                        )}
+            {timeSlotVotes.length === 0 ? (
+              <p className="text-center text-slate-500 py-6">시간대가 없습니다</p>
+            ) : (
+              <div className="space-y-4">
+                {timeSlotVotes.map(({ slot, votes, count }) => {
+                  const percentage = totalVoters > 0 ? (count / totalVoters) * 100 : 0;
+                  const isTopChoice = count === maxVotes && count > 0;
+
+                  return (
+                    <div key={slot.id}>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-slate-800">{slot.label}</span>
+                          {isTopChoice && (
+                            <span className="text-xs px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full font-medium">
+                              최다
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-sm font-semibold text-indigo-600">{count}명</span>
                       </div>
-                      <span className="text-sm font-medium text-gray-600">
-                        {count}명
-                      </span>
-                    </div>
 
-                    {/* 프로그레스 바 */}
-                    <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                      <div
-                        className={`h-full transition-all ${
-                          isTopChoice ? 'bg-green-500' : 'bg-blue-500'
-                        }`}
-                        style={{ width: `${percentage}%` }}
-                      />
-                    </div>
-
-                    {/* 참여자 리스트 */}
-                    {votes.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-2">
-                        {votes.map((vote) => (
-                          <span
-                            key={vote.memberId}
-                            className="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded"
-                          >
-                            {vote.memberName}
-                          </span>
-                        ))}
+                      {/* 프로그레스 바 */}
+                      <div className="h-2 bg-slate-100 rounded-full overflow-hidden mb-2">
+                        <div
+                          className={`h-full rounded-full transition-all duration-500 ${
+                            isTopChoice ? 'bg-amber-400' : 'bg-indigo-500'
+                          }`}
+                          style={{ width: `${percentage}%` }}
+                        />
                       </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+
+                      {/* 참여자 목록 */}
+                      {votes.length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          {votes.map((vote) => (
+                            <span
+                              key={vote.voterEmail}
+                              className="text-xs px-2 py-1 bg-slate-100 text-slate-600 rounded-full"
+                            >
+                              {vote.voterName}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
-          {/* 멤버별 참여 현황 */}
-          <div>
-            <h2 className="text-lg font-bold text-gray-900 mb-4">
-              멤버별 참여 현황
-            </h2>
-            <div className="grid gap-3">
-              {schedule.members.map((member) => {
-                const vote = schedule.votes.find((v) => v.memberId === member.id);
-                return (
+          {/* 참여자 목록 */}
+          <div className="card p-5 fade-in">
+            <h2 className="font-semibold text-slate-800 mb-4">참여자 ({totalVoters}명)</h2>
+
+            {totalVoters === 0 ? (
+              <p className="text-center text-slate-500 py-6">아직 참여자가 없습니다</p>
+            ) : (
+              <div className="space-y-3">
+                {schedule.votes.map((vote) => (
                   <div
-                    key={member.id}
-                    className={`p-4 rounded-lg ${
-                      vote ? 'bg-green-50 border border-green-200' : 'bg-gray-50'
-                    }`}
+                    key={vote.voterEmail}
+                    className="p-3 bg-slate-50 rounded-xl"
                   >
                     <div className="flex items-center justify-between mb-2">
-                      <span className="font-semibold text-gray-800">
-                        {member.name}
-                      </span>
-                      <span
-                        className={`text-xs px-2 py-1 rounded-full font-medium ${
-                          vote
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-gray-200 text-gray-600'
-                        }`}
-                      >
-                        {vote ? '투표 완료' : '미참여'}
+                      <span className="font-medium text-slate-800">{vote.voterName}</span>
+                      <span className="text-xs text-slate-400">
+                        {new Date(vote.votedAt).toLocaleDateString('ko-KR')}
                       </span>
                     </div>
-                    {vote && (
-                      <div className="flex flex-wrap gap-1">
-                        {vote.timeSlotIds.map((slotId) => {
-                          const slot = schedule.timeSlots.find(
-                            (s) => s.id === slotId
-                          );
-                          return slot ? (
-                            <span
-                              key={slotId}
-                              className="text-xs bg-white text-gray-700 px-2 py-1 rounded border border-gray-200"
-                            >
-                              {slot.label}
-                            </span>
-                          ) : null;
-                        })}
-                      </div>
-                    )}
+                    <div className="flex flex-wrap gap-1">
+                      {vote.timeSlotIds.map((slotId) => {
+                        const slot = schedule.timeSlots.find((s) => s.id === slotId);
+                        return slot ? (
+                          <span
+                            key={slotId}
+                            className="text-xs px-2 py-1 bg-white text-slate-600 rounded border border-slate-200"
+                          >
+                            {slot.label}
+                          </span>
+                        ) : null;
+                      })}
+                    </div>
                   </div>
-                );
-              })}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
 
-          {/* 액션 버튼 */}
-          <div className="space-y-2 pt-4">
+          {/* 버튼들 */}
+          <div className="space-y-2">
             <button
               onClick={() => router.push(`/vote/${scheduleId}`)}
-              className="w-full py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg hover:from-blue-600 hover:to-purple-700 font-bold transition-all"
+              className="w-full py-3.5 btn-primary rounded-xl font-semibold"
             >
               투표하기 / 수정하기
             </button>
             <button
               onClick={() => router.push('/')}
-              className="w-full py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-medium transition"
+              className="w-full py-3 btn-secondary rounded-xl font-medium text-sm"
             >
-              메인으로 (내 일정 관리)
+              ← 메인으로
             </button>
           </div>
-        </div>
 
-        {/* 링크 공유 섹션 */}
-        <div className="mt-6 bg-blue-50 rounded-xl p-4">
-          <p className="text-sm font-semibold text-gray-700 mb-2">
-            링크 공유하기
-          </p>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={
-                typeof window !== 'undefined'
-                  ? window.location.origin + `/vote/${scheduleId}`
-                  : ''
-              }
-              readOnly
-              className="flex-1 px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm"
-            />
-            <button
-              onClick={() => {
-                const url = window.location.origin + `/vote/${scheduleId}`;
-                navigator.clipboard.writeText(url);
-                alert('링크가 복사되었습니다!');
-              }}
-              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 font-medium text-sm transition"
-            >
-              복사
-            </button>
+          {/* 링크 공유 */}
+          <div className="card p-4 fade-in">
+            <p className="text-sm font-medium text-slate-700 mb-2">투표 링크 공유</p>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={
+                  typeof window !== 'undefined'
+                    ? `${window.location.origin}/vote/${scheduleId}`
+                    : ''
+                }
+                readOnly
+                className="flex-1 px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-600"
+              />
+              <button
+                onClick={() => {
+                  const url = `${window.location.origin}/vote/${scheduleId}`;
+                  navigator.clipboard.writeText(url);
+                  alert('링크가 복사되었습니다!');
+                }}
+                className="px-4 py-2.5 btn-primary rounded-lg font-medium text-sm"
+              >
+                복사
+              </button>
+            </div>
           </div>
         </div>
       </div>

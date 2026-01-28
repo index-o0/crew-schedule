@@ -7,8 +7,9 @@ interface ScheduleStore {
   getSchedule: (id: string) => Schedule | undefined;
   getMySchedules: (email: string) => Schedule[];
   addVote: (scheduleId: string, vote: Vote) => void;
-  updateVote: (scheduleId: string, memberId: string, vote: Vote) => void;
-  hasVoted: (scheduleId: string, memberId: string) => boolean;
+  updateVote: (scheduleId: string, voterEmail: string, vote: Vote) => void;
+  hasVoted: (scheduleId: string, voterEmail: string) => boolean;
+  getVoteByEmail: (scheduleId: string, voterEmail: string) => Vote | undefined;
   initializeFromLocalStorage: () => void;
 }
 
@@ -21,7 +22,6 @@ export const useScheduleStore = create<ScheduleStore>((set, get) => ({
         ...state.schedules,
         [schedule.id]: schedule,
       };
-      // LocalStorage에 저장
       if (typeof window !== 'undefined') {
         localStorage.setItem('schedules', JSON.stringify(newSchedules));
       }
@@ -55,24 +55,21 @@ export const useScheduleStore = create<ScheduleStore>((set, get) => ({
         [scheduleId]: updatedSchedule,
       };
 
-      // LocalStorage에 저장
       if (typeof window !== 'undefined') {
         localStorage.setItem('schedules', JSON.stringify(newSchedules));
-        // 투표 기록 저장
-        localStorage.setItem(`voted_${scheduleId}_${vote.memberId}`, 'true');
       }
 
       return { schedules: newSchedules };
     });
   },
 
-  updateVote: (scheduleId, memberId, vote) => {
+  updateVote: (scheduleId, voterEmail, vote) => {
     set((state) => {
       const schedule = state.schedules[scheduleId];
       if (!schedule) return state;
 
       const updatedVotes = schedule.votes.map((v) =>
-        v.memberId === memberId ? vote : v
+        v.voterEmail === voterEmail ? vote : v
       );
 
       const updatedSchedule = {
@@ -85,7 +82,6 @@ export const useScheduleStore = create<ScheduleStore>((set, get) => ({
         [scheduleId]: updatedSchedule,
       };
 
-      // LocalStorage에 저장
       if (typeof window !== 'undefined') {
         localStorage.setItem('schedules', JSON.stringify(newSchedules));
       }
@@ -94,9 +90,16 @@ export const useScheduleStore = create<ScheduleStore>((set, get) => ({
     });
   },
 
-  hasVoted: (scheduleId, memberId) => {
-    if (typeof window === 'undefined') return false;
-    return localStorage.getItem(`voted_${scheduleId}_${memberId}`) === 'true';
+  hasVoted: (scheduleId, voterEmail) => {
+    const schedule = get().schedules[scheduleId];
+    if (!schedule) return false;
+    return schedule.votes.some((v) => v.voterEmail === voterEmail);
+  },
+
+  getVoteByEmail: (scheduleId, voterEmail) => {
+    const schedule = get().schedules[scheduleId];
+    if (!schedule) return undefined;
+    return schedule.votes.find((v) => v.voterEmail === voterEmail);
   },
 
   initializeFromLocalStorage: () => {

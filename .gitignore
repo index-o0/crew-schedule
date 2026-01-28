@@ -34,5 +34,4 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 tmpclaude-*
-*.png
 id 정보.txt

@@ -9,8 +9,9 @@ export interface Member {
 }
 
 export interface Vote {
-  memberId: string;
-  memberName: string;
+  voterId: string;
+  voterName: string;
+  voterEmail: string; // Google 로그인 이메일 (중복 투표 방지용)
   timeSlotIds: string[];
   votedAt: string;
 }
@@ -20,7 +21,6 @@ export interface Schedule {
   title: string;
   date: string; // YYYY-MM-DD 형식
   timeSlots: TimeSlot[];
-  members: Member[];
   votes: Vote[];
   createdAt: string;
   createdBy?: string; // 생성자 이메일
@@ -30,5 +30,4 @@ export interface ScheduleFormData {
   title: string;
   date: string;
   timeSlots: TimeSlot[];
-  members: Member[];
 }

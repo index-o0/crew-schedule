@@ -21,7 +21,11 @@ export default function TermsPage() {
 
           <section>
             <h2 className="text-lg font-semibold text-slate-800 mb-2">3. 데이터 저장</h2>
-            <p>모든 일정 데이터는 사용자의 브라우저에 저장됩니다. 브라우저 데이터를 삭제하면 일정 정보도 함께 삭제됩니다.</p>
+            <p>모든 일정 및 투표 데이터는 클라우드 서버(Supabase)에 저장됩니다. 이를 통해 링크를 공유받은 누구나 동일한 일정에 접근하여 투표할 수 있습니다.</p>
+            <ul className="list-disc list-inside mt-2 space-y-1">
+              <li>일정 생성자는 언제든지 일정을 삭제할 수 있습니다.</li>
+              <li>일정 삭제 시 관련 투표 데이터도 함께 삭제됩니다.</li>
+            </ul>
           </section>
 
           <section>
@@ -35,7 +39,7 @@ export default function TermsPage() {
           </section>
 
           <p className="text-sm text-slate-400 pt-4 border-t">
-            최종 수정일: 2026년 1월 28일
+            최종 수정일: 2026년 1월 29일
           </p>
         </div>
 

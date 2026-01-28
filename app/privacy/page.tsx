@@ -27,7 +27,12 @@ export default function PrivacyPage() {
 
           <section>
             <h2 className="text-lg font-semibold text-slate-800 mb-2">3. 개인정보의 보관</h2>
-            <p>모든 데이터는 사용자의 브라우저 로컬 스토리지에 저장되며, 별도의 서버에 저장되지 않습니다.</p>
+            <p>일정 및 투표 데이터는 Supabase 클라우드 데이터베이스에 안전하게 저장됩니다. 이를 통해 여러 기기에서 동일한 일정에 접근하고 투표할 수 있습니다.</p>
+            <ul className="list-disc list-inside mt-2 space-y-1">
+              <li>일정 데이터: 일정 제목, 날짜, 시간대 옵션</li>
+              <li>투표 데이터: 투표자 이름, 이메일, 선택한 시간대</li>
+              <li>데이터는 일정 삭제 시 함께 삭제됩니다</li>
+            </ul>
           </section>
 
           <section>
@@ -41,7 +46,7 @@ export default function PrivacyPage() {
           </section>
 
           <p className="text-sm text-slate-400 pt-4 border-t">
-            최종 수정일: 2026년 1월 28일
+            최종 수정일: 2026년 1월 29일
           </p>
         </div>
 

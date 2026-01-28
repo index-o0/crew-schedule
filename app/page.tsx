@@ -9,13 +9,14 @@ import { useScheduleStore } from '@/store/scheduleStore';
 import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton';
 import { UserProfile } from '@/components/auth/UserProfile';
 
-// 시간 옵션
-const HOURS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+// 시간 옵션 (1-12)
+const HOURS = [12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
+const MINUTES = ['00', '30'];
 
 export default function Home() {
   const router = useRouter();
   const { data: session, status } = useSession();
-  const { addSchedule, getMySchedules, initializeFromLocalStorage } = useScheduleStore();
+  const { addSchedule, getMySchedules, deleteSchedule, initializeFromLocalStorage } = useScheduleStore();
 
   const [mySchedules, setMySchedules] = useState<Schedule[]>([]);
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -29,6 +30,7 @@ export default function Home() {
   // 시간 선택 상태
   const [selectedPeriod, setSelectedPeriod] = useState<'AM' | 'PM'>('PM');
   const [selectedHour, setSelectedHour] = useState<number>(2);
+  const [selectedMinute, setSelectedMinute] = useState<string>('00');
 
   useEffect(() => {
     initializeFromLocalStorage();
@@ -42,13 +44,13 @@ export default function Home() {
     }
   }, [isLoading, session, getMySchedules]);
 
-  const formatTimeLabel = (period: 'AM' | 'PM', hour: number) => {
+  const formatTimeLabel = (period: 'AM' | 'PM', hour: number, minute: string) => {
     const periodKo = period === 'AM' ? '오전' : '오후';
-    return `${periodKo} ${hour}시`;
+    return `${periodKo} ${hour}:${minute}`;
   };
 
   const addTimeSlot = () => {
-    const label = formatTimeLabel(selectedPeriod, selectedHour);
+    const label = formatTimeLabel(selectedPeriod, selectedHour, selectedMinute);
 
     // 중복 체크
     if (timeSlots.some(slot => slot.label === label)) {
@@ -61,6 +63,16 @@ export default function Home() {
 
   const removeTimeSlot = (id: string) => {
     setTimeSlots(timeSlots.filter((slot) => slot.id !== id));
+  };
+
+  const handleDeleteSchedule = (scheduleId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (confirm('정말 이 일정을 삭제하시겠습니까?\n삭제하면 공유 링크도 사라집니다.')) {
+      deleteSchedule(scheduleId);
+      if (session?.user?.email) {
+        setMySchedules(getMySchedules(session.user.email));
+      }
+    }
   };
 
   const createSchedule = () => {
@@ -131,11 +143,12 @@ export default function Home() {
 
         {/* 푸터 */}
         <div className="mt-8 text-center">
-          <div className="flex justify-center gap-4 text-xs text-slate-400">
+          <div className="flex justify-center gap-4 text-xs text-slate-400 mb-2">
             <a href="/privacy" className="hover:text-slate-600 transition">개인정보처리방침</a>
             <span>|</span>
             <a href="/terms" className="hover:text-slate-600 transition">이용약관</a>
           </div>
+          <p className="text-xs text-slate-300">© 수현쨩</p>
         </div>
       </div>
     );
@@ -209,6 +222,12 @@ export default function Home() {
                         >
                           🔗 링크 복사
                         </button>
+                        <button
+                          onClick={(e) => handleDeleteSchedule(schedule.id, e)}
+                          className="text-xs px-3 py-1.5 bg-white text-red-500 rounded-lg border border-red-200 hover:bg-red-50 transition font-medium"
+                        >
+                          🗑️ 삭제
+                        </button>
                       </div>
                     </div>
                   ))}
@@ -263,45 +282,76 @@ export default function Home() {
                   시간대 추가
                 </label>
 
-                {/* AM/PM 선택 */}
-                <div className="flex gap-2 mb-3">
-                  <button
-                    onClick={() => setSelectedPeriod('AM')}
-                    className={`flex-1 py-2.5 rounded-lg font-medium text-sm transition ${
-                      selectedPeriod === 'AM' ? 'time-btn-selected' : 'time-btn'
-                    }`}
-                  >
-                    오전
-                  </button>
-                  <button
-                    onClick={() => setSelectedPeriod('PM')}
-                    className={`flex-1 py-2.5 rounded-lg font-medium text-sm transition ${
-                      selectedPeriod === 'PM' ? 'time-btn-selected' : 'time-btn'
-                    }`}
-                  >
-                    오후
-                  </button>
-                </div>
-
-                {/* 시간 선택 */}
-                <div className="grid grid-cols-6 gap-2 mb-3">
-                  {HOURS.map((hour) => (
+                {/* 시간 선택기 */}
+                <div className="bg-slate-50 rounded-xl p-4 mb-3">
+                  {/* AM/PM 선택 */}
+                  <div className="flex gap-2 mb-4">
                     <button
-                      key={hour}
-                      onClick={() => setSelectedHour(hour)}
-                      className={`py-2 rounded-lg font-medium text-sm transition ${
-                        selectedHour === hour ? 'time-btn-selected' : 'time-btn'
+                      onClick={() => setSelectedPeriod('AM')}
+                      className={`flex-1 py-2.5 rounded-lg font-medium text-sm transition ${
+                        selectedPeriod === 'AM' ? 'bg-indigo-500 text-white' : 'bg-white text-slate-600 border border-slate-200'
                       }`}
                     >
-                      {hour}시
+                      오전
                     </button>
-                  ))}
+                    <button
+                      onClick={() => setSelectedPeriod('PM')}
+                      className={`flex-1 py-2.5 rounded-lg font-medium text-sm transition ${
+                        selectedPeriod === 'PM' ? 'bg-indigo-500 text-white' : 'bg-white text-slate-600 border border-slate-200'
+                      }`}
+                    >
+                      오후
+                    </button>
+                  </div>
+
+                  {/* 시간 스크롤러 */}
+                  <div className="flex gap-3 items-center justify-center">
+                    {/* 시 선택 */}
+                    <div className="flex-1">
+                      <p className="text-xs text-slate-500 text-center mb-2">시</p>
+                      <div className="grid grid-cols-4 gap-1.5">
+                        {HOURS.map((hour) => (
+                          <button
+                            key={hour}
+                            onClick={() => setSelectedHour(hour)}
+                            className={`py-2 rounded-lg font-medium text-sm transition ${
+                              selectedHour === hour
+                                ? 'bg-indigo-500 text-white'
+                                : 'bg-white text-slate-600 hover:bg-indigo-50'
+                            }`}
+                          >
+                            {hour}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 분 선택 */}
+                  <div className="mt-4">
+                    <p className="text-xs text-slate-500 text-center mb-2">분</p>
+                    <div className="flex gap-2 justify-center">
+                      {MINUTES.map((minute) => (
+                        <button
+                          key={minute}
+                          onClick={() => setSelectedMinute(minute)}
+                          className={`flex-1 max-w-[100px] py-2.5 rounded-lg font-medium text-sm transition ${
+                            selectedMinute === minute
+                              ? 'bg-indigo-500 text-white'
+                              : 'bg-white text-slate-600 hover:bg-indigo-50'
+                          }`}
+                        >
+                          {minute}분
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
 
                 {/* 선택된 시간 미리보기 & 추가 버튼 */}
                 <div className="flex items-center gap-2">
-                  <div className="flex-1 px-4 py-3 bg-slate-50 rounded-xl text-slate-600 font-medium">
-                    {formatTimeLabel(selectedPeriod, selectedHour)}
+                  <div className="flex-1 px-4 py-3 bg-indigo-50 rounded-xl text-indigo-700 font-semibold text-center">
+                    {formatTimeLabel(selectedPeriod, selectedHour, selectedMinute)}
                   </div>
                   <button
                     onClick={addTimeSlot}
@@ -314,18 +364,18 @@ export default function Home() {
                 {/* 추가된 시간대 목록 */}
                 {timeSlots.length > 0 && (
                   <div className="mt-4 space-y-2">
-                    <p className="text-xs text-slate-500 mb-2">추가된 시간대</p>
+                    <p className="text-xs text-slate-500 mb-2">추가된 시간대 ({timeSlots.length}개)</p>
                     {timeSlots.map((slot) => (
                       <div
                         key={slot.id}
-                        className="flex items-center justify-between bg-indigo-50 px-4 py-3 rounded-xl"
+                        className="flex items-center justify-between bg-white px-4 py-3 rounded-xl border border-indigo-100"
                       >
                         <span className="text-indigo-700 font-medium">{slot.label}</span>
                         <button
                           onClick={() => removeTimeSlot(slot.id)}
-                          className="text-indigo-400 hover:text-indigo-600 transition text-sm"
+                          className="text-slate-400 hover:text-red-500 transition text-sm"
                         >
-                          삭제
+                          ✕
                         </button>
                       </div>
                     ))}
@@ -348,11 +398,12 @@ export default function Home() {
 
       {/* 푸터 */}
       <div className="mt-8 text-center pb-4">
-        <div className="flex justify-center gap-4 text-xs text-slate-400">
+        <div className="flex justify-center gap-4 text-xs text-slate-400 mb-2">
           <a href="/privacy" className="hover:text-slate-600 transition">개인정보처리방침</a>
           <span>|</span>
           <a href="/terms" className="hover:text-slate-600 transition">이용약관</a>
         </div>
+        <p className="text-xs text-slate-300">© 수현쨩</p>
       </div>
     </div>
   );

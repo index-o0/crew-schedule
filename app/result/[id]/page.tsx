@@ -213,6 +213,11 @@ export default function ResultPage() {
               </button>
             </div>
           </div>
+
+          {/* 푸터 */}
+          <div className="text-center pt-4">
+            <p className="text-xs text-slate-300">© 수현쨩</p>
+          </div>
         </div>
       </div>
     </div>

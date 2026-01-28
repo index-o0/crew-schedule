@@ -6,6 +6,7 @@ interface ScheduleStore {
   addSchedule: (schedule: Schedule) => void;
   getSchedule: (id: string) => Schedule | undefined;
   getMySchedules: (email: string) => Schedule[];
+  deleteSchedule: (id: string) => void;
   addVote: (scheduleId: string, vote: Vote) => void;
   updateVote: (scheduleId: string, voterEmail: string, vote: Vote) => void;
   hasVoted: (scheduleId: string, voterEmail: string) => boolean;
@@ -38,6 +39,16 @@ export const useScheduleStore = create<ScheduleStore>((set, get) => ({
     return Object.values(schedules)
       .filter((s) => s.createdBy === email)
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  },
+
+  deleteSchedule: (id) => {
+    set((state) => {
+      const { [id]: deleted, ...remaining } = state.schedules;
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('schedules', JSON.stringify(remaining));
+      }
+      return { schedules: remaining };
+    });
   },
 
   addVote: (scheduleId, vote) => {

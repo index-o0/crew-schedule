@@ -128,6 +128,15 @@ export default function Home() {
             </div>
           </div>
         </div>
+
+        {/* 푸터 */}
+        <div className="mt-8 text-center">
+          <div className="flex justify-center gap-4 text-xs text-slate-400">
+            <a href="/privacy" className="hover:text-slate-600 transition">개인정보처리방침</a>
+            <span>|</span>
+            <a href="/terms" className="hover:text-slate-600 transition">이용약관</a>
+          </div>
+        </div>
       </div>
     );
   }
@@ -334,6 +343,15 @@ export default function Home() {
               </button>
             </div>
           )}
+        </div>
+      </div>
+
+      {/* 푸터 */}
+      <div className="mt-8 text-center pb-4">
+        <div className="flex justify-center gap-4 text-xs text-slate-400">
+          <a href="/privacy" className="hover:text-slate-600 transition">개인정보처리방침</a>
+          <span>|</span>
+          <a href="/terms" className="hover:text-slate-600 transition">이용약관</a>
         </div>
       </div>
     </div>
